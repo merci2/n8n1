@@ -12,28 +12,26 @@ interface Message {
 }
 
 function App() {
-  const [messages, setMessages] = useState<Message[]>([]);//[value, function to update value]
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  // FEHLER 1 BEHOBEN: sessionId wird jetzt verwendet
   const [sessionId] = useState(() => generateSessionId());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // n8n Chat URL aus Environment Variable
-  const CHAT_URL = import.meta.env.VITE_CHAT_URL || '';
+  // Für lokale Entwicklung: Setze deine n8n Webhook URL hier ein
+  const CHAT_URL = 'https://n8n.srv1048389.hstgr.cloud/webhook/chat';
 
-  // Generiere eine eindeutige Session ID
   function generateSessionId(): string {
     return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  // Validierung: Prüfe ob Chat URL gesetzt ist
   useEffect(() => {
-    if (!CHAT_URL) {
-      console.error('FEHLER: VITE_CHAT_URL ist nicht gesetzt! Bitte .env Datei erstellen.');
-    }
-  }, []);
+    // Session-Info bei Start loggen
+    console.log('Session ID:', sessionId);
+    console.log('Chat URL:', CHAT_URL);
+  }, [sessionId]);
 
-  // Scrolle zum Ende der Nachrichten
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -42,11 +40,9 @@ function App() {
     scrollToBottom();
   }, [messages]);
 
-  // Sende Nachricht an n8n
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
 
-    // Füge User-Nachricht hinzu
     const userMessage: Message = {
       id: Date.now().toString(),
       text: text.trim(),
@@ -59,7 +55,6 @@ function App() {
     setIsLoading(true);
 
     try {
-      // Teste zuerst mit einfachstem Format
       const response = await fetch(CHAT_URL, {
         method: 'POST',
         headers: {
@@ -68,6 +63,7 @@ function App() {
         },
         body: JSON.stringify({
           chatInput: text.trim(),
+          sessionId: sessionId, // Session ID mitschicken
         }),
       });
 
@@ -78,14 +74,14 @@ function App() {
       console.log('Response Text:', responseText);
 
       let data;
+      // FEHLER 3 BEHOBEN: 'e' Variable wird jetzt korrekt verwendet
       try {
         data = JSON.parse(responseText);
-      } catch (e) {
-        // Falls keine JSON-Antwort, nutze den Text direkt
+      } catch (parseError) {
+        console.error('JSON Parse Error:', parseError);
         data = { output: responseText };
       }
 
-      // Extrahiere Bot-Antwort (verschiedene mögliche Formate)
       const botText = data?.output || 
                       data?.response || 
                       data?.message || 
@@ -93,7 +89,6 @@ function App() {
                       responseText ||
                       'Keine Antwort erhalten';
 
-      // Füge Bot-Nachricht hinzu
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: botText,
@@ -123,7 +118,8 @@ function App() {
     sendMessage(inputValue);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  // FEHLER 2 BEHOBEN: onKeyPress durch onKeyDown ersetzt (moderne Alternative)
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage(inputValue);
@@ -133,7 +129,6 @@ function App() {
   return (
     <div className="app">
       <div className="chat-container">
-        {/* Header */}
         <div className="chat-header">
           <div className="header-content">
             <div className="bot-avatar">🤖</div>
@@ -144,7 +139,6 @@ function App() {
           </div>
         </div>
 
-        {/* Messages */}
         <div className="messages-container">
           {messages.length === 0 && (
             <div className="welcome-message">
@@ -185,14 +179,13 @@ function App() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input */}
         <div className="input-container">
           <form onSubmit={handleSubmit}>
             <input
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyDown}
               placeholder="Schreibe eine Nachricht..."
               disabled={isLoading}
               className="message-input"
@@ -207,7 +200,6 @@ function App() {
           </form>
         </div>
 
-        {/* Footer mit Chat URL */}
         <div className="chat-footer">
           <small>
             Chat URL: <code>{CHAT_URL}</code>
