@@ -1,3 +1,7 @@
+//React Hooks: 
+//Component: reusable UI component, returns JSX
+//state: changing data that affects the UI
+//
 import { useEffect, useRef, useState } from 'react';
 
 interface Message {
@@ -8,7 +12,7 @@ interface Message {
 }
 
 function App() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);//[value, function to update value]
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(() => generateSessionId());
